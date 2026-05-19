@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="display: flex; gap: 20px;">
+    <div style="flex: 1; border: 1px solid #ccc; padding: 20px; border-radius: 8px;">
+        <h3>Мои данные</h3>
+        <form action="{{ url_for('main.update_profile') }}" method="POST">
+            <p>ФИО: <input type="text" name="full_name" value="{{ current_user.full_name }}" style="width:100%"></p>
+            <p>Телефон: <input type="text" name="phone" value="{{ current_user.phone or '' }}" style="width:100%"></p>
+            <p>Паспорт: <textarea name="passport_data" style="width:100%">{{ current_user.passport_data or '' }}</textarea></p>
+            <button type="submit">Сохранить</button>
+        </form>
+    </div>
+
+    <div style="flex: 2;">
+        <h3>📦 Активные аренды</h3>
+        <table border="1" width="100%" cellpadding="10" style="border-collapse: collapse;">
+            <tr style="background: #f0f0f0;">
+                <th>Предмет</th>
+                <th>Начало</th>
+                <th>Срок до</th>
+                <th>Цена/ч</th>
+                <th>Итого</th>
+                <th>Действие</th>
+            </tr>
+            {% for rental in rentals if not rental.is_returned %}
+                {% set calc_end = rental.rent_end if rental.rent_end else now %}
+                {% set hours = ((calc_end - rental.rent_start).total_seconds() / 3600) | round(0, 'ceil') | int %}
+                {% set total = hours * rental.equipment.price_per_hour %}
+                <tr>
+                    <td>{{ rental.equipment.title }}</td>
+                    <td>{{ rental.rent_start.strftime('%d.%m %H:%M') }}</td>
+                    <td>{{ rental.rent_end.strftime('%d.%m %H:%M') if rental.rent_end else 'Не ограничено' }}</td>
+                    <td>{{ rental.equipment.price_per_hour }} ₽</td>
+                    <td><strong>{{ total }} ₽</strong></td>
+                    <td>
+                        <form action="{{ url_for('main.process_return', rental_id=rental.id) }}" method="POST">
+                            <button type="submit" style="background: #dc3545; color: white; cursor:pointer;">Вернуть</button>
+                        </form>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="6" align="center">Активных аренд нет</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+
+<div id="payModal" style="display:none; position:fixed; z-index:999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.7);">
+    <div style="background:white; width:300px; margin:15% auto; padding:20px; border-radius:10px; text-align:center;">
+        <h2>Оплата</h2>
+        <p id="payText">Сумма к оплате: 0 ₽</p>
+        <button onclick="this.parentElement.parentElement.style.display='none'" style="padding:10px 20px; background:green; color:white; border:none; cursor:pointer;">Оплатить</button>
+    </div>
+</div>
+
+<script>
+    window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        if (urlParams.has('show_payment')) {
+            const amount = urlParams.get('amount');
+            const displayAmount = (amount && amount !== 'null') ? amount : '0';
+            const payTextElement = document.getElementById('payText');
+            if (payTextElement) {
+                payTextElement.innerText = "Сумма к оплате: " + displayAmount + " ₽";
+            }
+            const modal = document.getElementById('payModal');
+            if (modal) {
+                modal.style.display = 'block';
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+</script>
+{% endblock %}

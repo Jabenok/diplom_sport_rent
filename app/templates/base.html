@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Система проката</title>
+</head>
+<body>
+ <nav>
+    <table width="100%" border="0" cellpadding="10">
+        <tr>
+            <td><strong>🏅 СПОРТ-ПРОКАТ</strong></td>
+            <td align="right">
+                <a href="{{ url_for('main.index') }}">Главная</a> | 
+                
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('main.profile') }}"><b>Личный кабинет</b></a> | 
+                    
+                    {% if current_user.is_admin %}
+                        <a href="{{ url_for('main.admin_equipment') }}">
+                            <button style="background-color: #ffc107;">⚙️ Админ</button>
+                        </a> |
+                    {% endif %}
+                    
+                    <span>{{ current_user.full_name }}</span> |
+                    <a href="{{ url_for('main.logout') }}">Выйти</a>
+                {% else %}
+                    <a href="{{ url_for('main.login') }}"><button>Вход</button></a>
+                    <a href="{{ url_for('main.register') }}"><button>Регистрация</button></a>
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+</nav>
+<hr>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <p style="
+        padding: 10px; 
+        border-radius: 5px; 
+        border: 1px solid;
+        {% if category == 'success' %}
+            color: #155724; background-color: #d4edda; border-color: #c3e6cb;
+        {% else %}
+            color: #721c24; background-color: #f8d7da; border-color: #f5c6cb;
+        {% endif %}
+      ">
+        {{ message }}
+      </p>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+    {% block content %}{% endblock %}
+</body>
+</html>
