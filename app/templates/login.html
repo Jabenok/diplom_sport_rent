@@ -1,19 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
-    <fieldset style="width: 300px; margin: auto;">
-        <legend><h3>Авторизация</h3></legend>
-        <form method="POST">
-            <p>
-                <label>Email:</label><br>
-                <input type="email" name="email" required style="width: 100%;">
-            </p>
-            <p>
-                <label>Пароль:</label><br>
-                <input type="password" name="password" required style="width: 100%;">
-            </p>
-            <p align="center">
-                <button type="submit" style="padding: 5px 20px;">Войти в систему</button>
-            </p>
-        </form>
-    </fieldset>
+<div class="form-card">
+    <h2>Авторизация</h2>
+    <p class="text-muted">Войдите в свой аккаунт, чтобы арендовать спортивный инвентарь.</p>
+    <form method="POST" class="form-grid">
+        <div class="field-group">
+            <label>Email</label>
+            <input type="email" name="email" class="input-field" required>
+        </div>
+        <div class="field-group">
+            <label>Пароль</label>
+            <input type="password" name="password" class="input-field" required>
+        </div>
+        <button type="submit" class="btn">Войти в систему</button>
+    </form>
+</div>
 {% endblock %}

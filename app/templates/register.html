@@ -1,19 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Регистрация</h2>
-<form method="POST">
-    <div class="mb-3">
-        <label>ФИО:</label>
-        <input type="text" name="full_name" class="form-control" required>
-    </div>
-    <div class="mb-3">
-        <label>Email:</label>
-        <input type="email" name="email" class="form-control" required>
-    </div>
-    <div class="mb-3">
-        <label>Пароль:</label>
-        <input type="password" name="password" class="form-control" required>
-    </div>
-    <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
-</form>
+<div class="form-card">
+    <h2>Регистрация</h2>
+    <p class="text-muted">Создайте аккаунт, чтобы начать аренду спортивного инвентаря.</p>
+    <form method="POST" class="form-grid">
+        <div class="field-group">
+            <label>ФИО</label>
+            <input type="text" name="full_name" class="input-field" required>
+        </div>
+        <div class="field-group">
+            <label>Email</label>
+            <input type="email" name="email" class="input-field" required>
+        </div>
+        <div class="field-group">
+            <label>Пароль</label>
+            <input type="password" name="password" class="input-field" required>
+        </div>
+        <button type="submit" class="btn">Зарегистрироваться</button>
+    </form>
+</div>
 {% endblock %}

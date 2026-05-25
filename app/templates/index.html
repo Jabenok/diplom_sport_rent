@@ -1,75 +1,83 @@
 {% extends "base.html" %}
 {% block content %}
-    <h2>Список доступного инвентаря</h2>
-    
-    <table border="1" cellpadding="10" width="100%">
-    <thead>
-        <tr>
-            <th>Название</th>
-            <th>Категория</th>
-            <th>Цена (час)</th>
-            <th>Статус</th>
-            <th>Действие</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for item in items %}
-        <tr>
-            <td>{{ item.title }}</td>
-            <td>{{ item.category }}</td>
-            <td>{{ item.price_per_hour }} ₽</td>
-            <td>
-                {% if item.status == 'Available' %}
-                    <span style="color: green;">Свободно</span>
-                {% elif item.status == 'Rented' %}
-                    <span style="color: red;">В прокате</span>
-                {% else %}
-                    <span style="color: gray;">Ремонт</span>
-                {% endif %}
-            </td>
-            <td>
-    {% if item.status == 'Available' %}
-        <button type="button" 
-                onclick="openRentModal('{{ item.id }}', '{{ item.title }}', {{ item.price_per_hour }})" 
-                style="background-color: #28a745; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer;">
-            Арендовать
-        </button>
-    {% else %}
-        <button disabled style="background-color: #ccc; color: #666; padding: 8px 15px; border: none; border-radius: 4px;">
-            Занято
-        </button>
-    {% endif %}
-</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<section class="section-card">
+    <div class="section-header">
+        <div>
+            <h2>Список доступного инвентаря</h2>
+            <p class="text-muted">Выберите нужный инвентарь и оформите аренду прямо сейчас.</p>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="inventory-table">
+            <thead>
+                <tr>
+                    <th>Название</th>
+                    <th>Категория</th>
+                    <th>Цена (час)</th>
+                    <th>Статус</th>
+                    <th>Действие</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.title }}</td>
+                    <td>{{ item.category }}</td>
+                    <td>{{ item.price_per_hour }} ₽</td>
+                    <td>
+                        {% if item.status == 'Available' %}
+                            <span class="badge available">Свободно</span>
+                        {% elif item.status == 'Rented' %}
+                            <span class="badge rented">В прокате</span>
+                        {% else %}
+                            <span class="badge repair">На ремонте</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.status == 'Available' %}
+                            <button type="button" class="btn btn-success"
+                                    onclick="openRentModal('{{ item.id }}', '{{ item.title }}', {{ item.price_per_hour }})">
+                                Арендовать
+                            </button>
+                        {% else %}
+                            <button class="btn btn-disabled" disabled>Занято</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
     {% if not items %}
-        <p>На данный момент инвентарь отсутствует в базе данных.</p>
+        <div class="empty-state">
+            На данный момент инвентарь отсутствует в базе данных.
+        </div>
     {% endif %}
+</section>
 
-<div id="rentModal" style="display:none; position:fixed; z-index:1; left:0; top:0; width:100%; height:100%; background-color: rgba(0,0,0,0.5);">
-    <div style="background-color:white; margin:10% auto; padding:20px; width:400px; border-radius:10px;">
-        <span onclick="closeModal()" style="float:right; cursor:pointer; font-size:20px;">&times;</span>
+<div id="rentModal" class="modal-backdrop" style="display:none;">
+    <div class="modal-card">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
         <h3>Оформление аренды</h3>
-        <p id="modalItemTitle">Предмет: </p>
-        <p>Цена: <span id="modalItemPrice"></span> ₽/час</p>
-        
-        <form action="{{ url_for('main.rent_item_process') }}" method="POST">
+        <p id="modalItemTitle">Предмет:</p>
+        <p>Цена: <strong><span id="modalItemPrice">0</span> ₽</strong> / час</p>
+
+        <form action="{{ url_for('main.rent_item_process') }}" method="POST" class="form-grid">
             <input type="hidden" name="item_id" id="modalItemId">
-            
-            <p>Начало аренды:<br>
-                <input type="datetime-local" name="rent_start" id="rent_start" required onchange="calculateTotal()">
-            </p>
-            <p>Окончание аренды:<br>
-                <input type="datetime-local" name="rent_end" id="rent_end" required onchange="calculateTotal()">
-            </p>
-            
-            <hr>
-            <h4>Итого: <span id="totalPrice">0</span> ₽</h4>
-            
-            <button type="submit" style="width:100%; background-color:#28a745; color:white; padding:10px; border:none; cursor:pointer;">Подтвердить аренду</button>
+            <div class="field-group">
+                <label>Начало аренды</label>
+                <input type="datetime-local" name="rent_start" id="rent_start" class="input-field" required onchange="calculateTotal()">
+            </div>
+            <div class="field-group">
+                <label>Окончание аренды</label>
+                <input type="datetime-local" name="rent_end" id="rent_end" class="input-field" required onchange="calculateTotal()">
+            </div>
+            <div class="field-group">
+                <h4>Итого: <span id="totalPrice">0</span> ₽</h4>
+            </div>
+            <button type="submit" class="btn btn-success">Подтвердить аренду</button>
         </form>
     </div>
 </div>
@@ -79,15 +87,15 @@ let currentPricePerHour = 0;
 
 function openRentModal(id, title, price) {
     document.getElementById('modalItemId').value = id;
-    document.getElementById('modalItemTitle').innerText = "Предмет: " + title;
+    document.getElementById('modalItemTitle').innerText = 'Предмет: ' + title;
     document.getElementById('modalItemPrice').innerText = price;
     currentPricePerHour = price;
-    
-    let now = new Date().toISOString().slice(0, 16);
+
+    const now = new Date().toISOString().slice(0, 16);
     document.getElementById('rent_start').min = now;
     document.getElementById('rent_end').min = now;
-    
-    document.getElementById('rentModal').style.display = 'block';
+
+    document.getElementById('rentModal').style.display = 'flex';
 }
 
 function closeModal() {
@@ -97,7 +105,7 @@ function closeModal() {
 function calculateTotal() {
     const start = new Date(document.getElementById('rent_start').value);
     const end = new Date(document.getElementById('rent_end').value);
-    
+
     if (start && end && end > start) {
         const diffInMs = end - start;
         const diffInHours = Math.ceil(diffInMs / (1000 * 60 * 60));
@@ -107,6 +115,4 @@ function calculateTotal() {
     }
 }
 </script>
-
-
 {% endblock %}
