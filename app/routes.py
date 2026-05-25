@@ -24,8 +24,45 @@ def register_routes(app):
 
     @main.route('/', endpoint='index')
     def index():
-        items = Equipment.query.all()
-        return render_template('index.html', items=items)
+        page = request.args.get('page', 1, type=int)
+        title_filter = request.args.get('title', '').strip()
+        category_filter = request.args.get('category', '').strip()
+        status_filter = request.args.get('status', '').strip()
+        sort_by = request.args.get('sort', 'title')
+        sort_dir = request.args.get('dir', 'asc')
+
+        query = Equipment.query
+        if title_filter:
+            query = query.filter(Equipment.title.ilike(f'%{title_filter}%'))
+        if category_filter:
+            query = query.filter(Equipment.category == category_filter)
+        if status_filter:
+            query = query.filter(Equipment.status == status_filter)
+
+        sort_columns = {
+            'title': Equipment.title,
+            'category': Equipment.category,
+            'price': Equipment.price_per_hour,
+        }
+        sort_column = sort_columns.get(sort_by, Equipment.title)
+        if sort_dir == 'desc':
+            sort_order = sort_column.desc()
+        else:
+            sort_order = sort_column.asc()
+
+        pagination = query.order_by(sort_order).paginate(page=page, per_page=15, error_out=False)
+        categories = [row[0] for row in db.session.query(Equipment.category).distinct().all() if row[0]]
+
+        return render_template(
+            'index.html',
+            items=pagination,
+            categories=categories,
+            title_filter=title_filter,
+            category_filter=category_filter,
+            status_filter=status_filter,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+        )
 
 
     @main.route('/register', methods=['GET', 'POST'], endpoint='register')

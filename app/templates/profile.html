@@ -3,20 +3,20 @@
 <div class="profile-grid">
     <section class="list-panel">
         <h3>Мои данные</h3>
-        <form action="{{ url_for('main.update_profile') }}" method="POST" class="form-grid">
+        <form id="profileForm" action="{{ url_for('main.update_profile') }}" method="POST" class="form-grid">
             <div class="field-group">
                 <label>ФИО</label>
-                <input type="text" name="full_name" class="input-field" value="{{ current_user.full_name }}" required>
+                <input type="text" name="full_name" class="input-field" value="{{ current_user.full_name }}" readonly required>
             </div>
             <div class="field-group">
                 <label>Телефон</label>
-                <input type="text" name="phone" class="input-field" value="{{ current_user.phone or '' }}">
+                <input type="text" name="phone" class="input-field" value="{{ current_user.phone or '' }}" readonly>
             </div>
             <div class="field-group">
                 <label>Паспорт</label>
-                <textarea name="passport_data" class="input-field">{{ current_user.passport_data or '' }}</textarea>
+                <textarea name="passport_data" class="input-field" readonly>{{ current_user.passport_data or '' }}</textarea>
             </div>
-            <button type="submit" class="btn">Сохранить</button>
+            <button type="button" id="profileToggleBtn" class="btn btn-secondary">Изменить</button>
         </form>
     </section>
 
@@ -93,5 +93,37 @@ window.onload = function() {
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 };
+
+const profileForm = document.getElementById('profileForm');
+const profileToggleBtn = document.getElementById('profileToggleBtn');
+const profileFields = Array.from(profileForm.querySelectorAll('input[name], textarea[name]'));
+
+function setProfileFields(readonly) {
+    profileFields.forEach((field) => {
+        if (readonly) {
+            field.setAttribute('readonly', 'readonly');
+            field.classList.add('readonly-field');
+        } else {
+            field.removeAttribute('readonly');
+            field.classList.remove('readonly-field');
+        }
+    });
+}
+
+function toggleProfileEdit() {
+    const isEditMode = profileToggleBtn.textContent.trim() === 'Изменить';
+    if (isEditMode) {
+        setProfileFields(false);
+        profileToggleBtn.textContent = 'Сохранить';
+        profileToggleBtn.classList.remove('btn-secondary');
+        profileToggleBtn.classList.add('btn');
+        profileFields[0].focus();
+    } else {
+        profileForm.submit();
+    }
+}
+
+profileToggleBtn.addEventListener('click', toggleProfileEdit);
+setProfileFields(true);
 </script>
 {% endblock %}

@@ -1,26 +1,55 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="section-card">
-    <div class="section-header">
+    <div class="section-header" style="align-items: center; gap: 18px;">
         <div>
             <h2>Список доступного инвентаря</h2>
-            <p class="text-muted">Выберите нужный инвентарь и оформите аренду прямо сейчас.</p>
+            <p class="text-muted">Найдите нужный товар быстро с помощью поиска и фильтров.</p>
         </div>
+        <button type="button" id="searchToggleBtn" class="btn btn-secondary" onclick="toggleSearchPanel()">Поиск</button>
     </div>
+
+    <form id="searchPanel" method="GET" class="form-grid search-panel hidden" style="margin-bottom: 22px;">
+        <div class="field-group">
+            <label>Поиск по названию</label>
+            <input type="text" name="title" class="input-field" value="{{ title_filter }}" placeholder="Например, серф">
+        </div>
+        <div class="field-group">
+            <label>Категория</label>
+            <select name="category" class="input-field">
+                <option value="">Все категории</option>
+                {% for category in categories %}
+                    <option value="{{ category }}" {% if category == category_filter %}selected{% endif %}>{{ category }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field-group">
+            <label>Статус</label>
+            <select name="status" class="input-field">
+                <option value="">Любой</option>
+                <option value="Available" {% if status_filter == 'Available' %}selected{% endif %}>Свободно</option>
+                <option value="Rented" {% if status_filter == 'Rented' %}selected{% endif %}>В прокате</option>
+                <option value="Repair" {% if status_filter == 'Repair' %}selected{% endif %}>На ремонте</option>
+            </select>
+        </div>
+        <div style="display:flex; align-items:flex-end;">
+            <button type="submit" class="btn">Применить</button>
+        </div>
+    </form>
 
     <div class="table-wrapper">
         <table class="inventory-table">
             <thead>
                 <tr>
-                    <th>Название</th>
-                    <th>Категория</th>
-                    <th>Цена (час)</th>
+                    <th><a href="?page=1&sort=title&dir={{ 'desc' if sort_by == 'title' and sort_dir == 'asc' else 'asc' }}&title={{ title_filter|urlencode }}&category={{ category_filter|urlencode }}&status={{ status_filter|urlencode }}">Название {% if sort_by == 'title' %}{{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+                    <th><a href="?page=1&sort=category&dir={{ 'desc' if sort_by == 'category' and sort_dir == 'asc' else 'asc' }}&title={{ title_filter|urlencode }}&category={{ category_filter|urlencode }}&status={{ status_filter|urlencode }}">Категория {% if sort_by == 'category' %}{{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+                    <th><a href="?page=1&sort=price&dir={{ 'desc' if sort_by == 'price' and sort_dir == 'asc' else 'asc' }}&title={{ title_filter|urlencode }}&category={{ category_filter|urlencode }}&status={{ status_filter|urlencode }}">Цена (час) {% if sort_by == 'price' %}{{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
                     <th>Статус</th>
                     <th>Действие</th>
                 </tr>
             </thead>
             <tbody>
-                {% for item in items %}
+                {% for item in items.items %}
                 <tr>
                     <td>{{ item.title }}</td>
                     <td>{{ item.category }}</td>
@@ -50,10 +79,26 @@
         </table>
     </div>
 
-    {% if not items %}
+    {% if not items.items %}
         <div class="empty-state">
-            На данный момент инвентарь отсутствует в базе данных.
+            По вашему запросу ничего не найдено.
         </div>
+    {% endif %}
+
+    {% if items.pages > 1 %}
+    <div class="section-header" style="justify-content:center; margin-top: 18px;">
+        <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">
+            {% if items.has_prev %}
+                <a href="?page={{ items.prev_num }}&title={{ title_filter }}&category={{ category_filter }}&status={{ status_filter }}" class="btn btn-secondary">← Назад</a>
+            {% endif %}
+            {% for p in range(1, items.pages + 1) %}
+                <a href="?page={{ p }}&title={{ title_filter }}&category={{ category_filter }}&status={{ status_filter }}" class="btn {% if items.page == p %}btn-success{% else %}btn-secondary{% endif %}">{{ p }}</a>
+            {% endfor %}
+            {% if items.has_next %}
+                <a href="?page={{ items.next_num }}&title={{ title_filter }}&category={{ category_filter }}&status={{ status_filter }}" class="btn btn-secondary">Вперед →</a>
+            {% endif %}
+        </div>
+    </div>
     {% endif %}
 </section>
 
@@ -114,5 +159,23 @@ function calculateTotal() {
         document.getElementById('totalPrice').innerText = 0;
     }
 }
+
+function toggleSearchPanel() {
+    const panel = document.getElementById('searchPanel');
+    const button = document.getElementById('searchToggleBtn');
+    panel.classList.toggle('hidden');
+    button.textContent = panel.classList.contains('hidden') ? 'Поиск' : 'Скрыть';
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    const panel = document.getElementById('searchPanel');
+    const title = document.querySelector('#searchPanel [name="title"]').value.trim();
+    const category = document.querySelector('#searchPanel [name="category"]').value;
+    const status = document.querySelector('#searchPanel [name="status"]').value;
+    if (title || category || status) {
+        panel.classList.remove('hidden');
+        document.getElementById('searchToggleBtn').textContent = 'Скрыть';
+    }
+});
 </script>
 {% endblock %}
