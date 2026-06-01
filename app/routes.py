@@ -1,9 +1,9 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash, abort
+from flask import Blueprint, render_template, redirect, url_for, request, flash, abort, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from datetime import datetime
 import math
 
-from .models import User, Equipment, Rental
+from .models import User, Equipment, Rental, Category
 from . import db
 
 
@@ -31,17 +31,17 @@ def register_routes(app):
         sort_by = request.args.get('sort', 'title')
         sort_dir = request.args.get('dir', 'asc')
 
-        query = Equipment.query
+        query = Equipment.query.outerjoin(Category)
         if title_filter:
             query = query.filter(Equipment.title.ilike(f'%{title_filter}%'))
         if category_filter:
-            query = query.filter(Equipment.category == category_filter)
+            query = query.filter(Category.name == category_filter)
         if status_filter:
             query = query.filter(Equipment.status == status_filter)
 
         sort_columns = {
             'title': Equipment.title,
-            'category': Equipment.category,
+            'category': Category.name,
             'price': Equipment.price_per_hour,
         }
         sort_column = sort_columns.get(sort_by, Equipment.title)
@@ -51,7 +51,7 @@ def register_routes(app):
             sort_order = sort_column.asc()
 
         pagination = query.order_by(sort_order).paginate(page=page, per_page=15, error_out=False)
-        categories = [row[0] for row in db.session.query(Equipment.category).distinct().all() if row[0]]
+        categories = Category.query.order_by(Category.name).all()
 
         return render_template(
             'index.html',
@@ -145,22 +145,40 @@ def register_routes(app):
         if request.method == 'POST':
             item_id = request.form.get('item_id')
             title = request.form.get('title')
-            category = request.form.get('category')
+            category_id = request.form.get('category_id')
+            new_category_name = request.form.get('new_category_name', '').strip()
             price = request.form.get('price')
             status = request.form.get('status')
+
+            selected_category = None
+            if category_id == '__new__':
+                if not new_category_name:
+                    flash('Введите название новой категории.', 'danger')
+                    return redirect(url_for('main.admin_equipment'))
+                selected_category = Category.query.filter_by(name=new_category_name).first()
+                if not selected_category:
+                    selected_category = Category(name=new_category_name)
+                    db.session.add(selected_category)
+                    db.session.flush()
+            elif category_id:
+                selected_category = Category.query.get(category_id)
+
+            if not selected_category:
+                flash('Выберите категорию или создайте новую.', 'danger')
+                return redirect(url_for('main.admin_equipment'))
 
             if item_id:
                 item = Equipment.query.get(item_id)
                 if item:
                     item.title = title
-                    item.category = category
+                    item.category = selected_category
                     item.price_per_hour = float(price)
                     item.status = status
                     flash(f'Обновлено: {title}', 'success')
             else:
                 new_item = Equipment(
                     title=title,
-                    category=category,
+                    category=selected_category,
                     price_per_hour=float(price),
                     status=status,
                 )
@@ -170,8 +188,111 @@ def register_routes(app):
             db.session.commit()
             return redirect(url_for('main.admin_equipment'))
 
+        categories = Category.query.order_by(Category.name).all()
         all_items = Equipment.query.all()
-        return render_template('admin_equipment.html', items=all_items)
+        return render_template('admin_equipment.html', items=all_items, categories=categories)
+
+
+    @main.route('/admin/categories', methods=['POST'], endpoint='admin_categories')
+    @login_required
+    @admin_required
+    def admin_categories():
+        category_name = request.form.get('category_name', '').strip()
+        if not category_name:
+            flash('Название категории не может быть пустым.', 'danger')
+            return redirect(url_for('main.admin_equipment'))
+
+        existing = Category.query.filter_by(name=category_name).first()
+        if existing:
+            flash('Категория с таким именем уже существует.', 'danger')
+            return redirect(url_for('main.admin_equipment'))
+
+        new_category = Category(name=category_name)
+        db.session.add(new_category)
+        db.session.commit()
+
+        flash(f'Категория добавлена: {category_name}', 'success')
+        return redirect(url_for('main.admin_equipment'))
+
+
+    @main.route('/admin/categories/delete/<int:category_id>', endpoint='delete_category')
+    @login_required
+    @admin_required
+    def delete_category(category_id):
+        category = Category.query.get_or_404(category_id)
+        if category.equipment:
+            flash('Нельзя удалить категорию, к которой привязан инвентарь.', 'danger')
+            return redirect(url_for('main.admin_equipment'))
+
+        db.session.delete(category)
+        db.session.commit()
+        flash(f'Категория удалена: {category.name}', 'success')
+        return redirect(url_for('main.admin_equipment'))
+
+
+    @main.route('/admin/categories/update/<int:category_id>', methods=['POST'], endpoint='update_category')
+    @login_required
+    @admin_required
+    def update_category(category_id):
+        category = Category.query.get_or_404(category_id)
+        new_name = request.form.get('category_name', '').strip()
+        if not new_name:
+            flash('Название категории не может быть пустым.', 'danger')
+            return redirect(url_for('main.admin_equipment'))
+
+        existing = Category.query.filter_by(name=new_name).first()
+        if existing and existing.id != category.id:
+            flash('Категория с таким именем уже существует.', 'danger')
+            return redirect(url_for('main.admin_equipment'))
+
+        category.name = new_name
+        db.session.commit()
+        flash(f'Категория обновлена: {new_name}', 'success')
+        return redirect(url_for('main.admin_equipment'))
+
+
+    @main.route('/check_rental_eligibility', methods=['POST'], endpoint='check_rental_eligibility')
+    def check_rental_eligibility():
+        """Проверяет право пользователя на аренду и показывает форму выбора времени"""
+        if not current_user.is_authenticated:
+            flash('Пожалуйста, авторизуйтесь перед арендой!', 'danger')
+            return redirect(url_for('main.login'))
+        
+        if not current_user.phone or not current_user.passport_hash:
+            missing = []
+            if not current_user.phone:
+                missing.append('телефон')
+            if not current_user.passport_hash:
+                missing.append('паспортные данные')
+            flash(f'Для аренды необходимо заполнить: {" и ".join(missing)}', 'danger')
+            return redirect(url_for('main.profile'))
+        
+        item_id = request.form.get('item_id')
+        item = Equipment.query.get_or_404(item_id)
+        
+        if item.status != 'Available':
+            flash('Этот предмет сейчас недоступен для аренды.', 'danger')
+            return redirect(url_for('main.index'))
+        
+        # Все проверки пройдены, переходим на форму выбора времени
+        return redirect(url_for('main.rent_form', item_id=item_id))
+
+
+    @main.route('/rent/form/<int:item_id>', endpoint='rent_form')
+    @login_required
+    def rent_form(item_id):
+        """Отображает форму для выбора времени аренды"""
+        if not current_user.phone or not current_user.passport_hash:
+            flash('Данные профиля неполные. Пожалуйста, заполните их.', 'danger')
+            return redirect(url_for('main.profile'))
+        
+        item = Equipment.query.get_or_404(item_id)
+        
+        if item.status != 'Available':
+            flash('Этот предмет сейчас недоступен для аренды.', 'danger')
+            return redirect(url_for('main.index'))
+        
+        return render_template('rent_form.html', item=item)
 
 
     @main.route('/rent/<int:item_id>', endpoint='rent_item')
@@ -248,6 +369,46 @@ def register_routes(app):
         db.session.commit()
 
         flash(f'Аренда оформлена! Итоговая стоимость: {total_cost} ₽', 'success')
+        return redirect(url_for('main.profile'))
+
+
+    @main.route('/extend_rental/<int:rental_id>', methods=['POST'], endpoint='extend_rental')
+    @login_required
+    def extend_rental(rental_id):
+        rental = Rental.query.get_or_404(rental_id)
+
+        # Проверяем, что это аренда текущего пользователя
+        if rental.user_id != current_user.id:
+            abort(403)
+
+        new_end_str = request.form.get('new_end_date')
+        if not new_end_str:
+            flash('Необходимо выбрать дату продления', 'danger')
+            return redirect(url_for('main.profile'))
+
+        try:
+            new_end_dt = datetime.strptime(new_end_str, '%Y-%m-%dT%H:%M')
+        except ValueError:
+            flash('Неверный формат даты', 'danger')
+            return redirect(url_for('main.profile'))
+
+        # Проверяем, что новая дата позже текущей даты окончания
+        current_end = rental.rent_end if rental.rent_end else datetime.now()
+        if new_end_dt <= current_end:
+            flash('Новая дата должна быть позже текущей даты окончания!', 'danger')
+            return redirect(url_for('main.profile'))
+
+        # Вычисляем дополнительную стоимость
+        old_end = rental.rent_end if rental.rent_end else datetime.now()
+        additional_duration = new_end_dt - old_end
+        additional_hours = max(1, math.ceil(additional_duration.total_seconds() / 3600))
+        additional_cost = additional_hours * rental.equipment.price_per_hour
+
+        # Обновляем дату окончания
+        rental.rent_end = new_end_dt
+        db.session.commit()
+
+        flash(f'Аренда продлена до {new_end_dt.strftime("%d.%m %H:%M")}. Дополнительно: {additional_cost} ₽', 'success')
         return redirect(url_for('main.profile'))
 
 

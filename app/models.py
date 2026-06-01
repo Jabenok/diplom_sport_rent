@@ -34,13 +34,27 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.passport_hash, passport_data)
 
 
+class Category(db.Model):
+    __tablename__ = 'category'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+
+    def __repr__(self):
+        return f'<Category {self.name}>'
+
+
 class Equipment(db.Model):
     __tablename__ = 'equipment'
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
-    category = db.Column(db.String(50))
+    category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
+    category = db.relationship('Category', backref='equipment')
     price_per_hour = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(20), default='Available')
+
+    @property
+    def category_name(self):
+        return self.category.name if self.category else 'Без категории'
 
 
 class Rental(db.Model):

@@ -1,4 +1,4 @@
-from app.models import User, Equipment, Rental
+from app.models import User, Equipment, Rental, Category
 from app import db
 
 
@@ -16,7 +16,11 @@ def test_rental_equipment_relationship(app):
     user.set_password('secret')
     db.session.add(user)
 
-    equipment = Equipment(title='Велосипед', category='Велоспорт', price_per_hour=150.0)
+    category = Category(name='Велоспорт')
+    db.session.add(category)
+    db.session.commit()
+
+    equipment = Equipment(title='Велосипед', category=category, price_per_hour=150.0)
     db.session.add(equipment)
     db.session.commit()
 

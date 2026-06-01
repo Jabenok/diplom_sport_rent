@@ -19,7 +19,7 @@
             <select name="category" class="input-field">
                 <option value="">Все категории</option>
                 {% for category in categories %}
-                    <option value="{{ category }}" {% if category == category_filter %}selected{% endif %}>{{ category }}</option>
+                    <option value="{{ category.name }}" {% if category.name == category_filter %}selected{% endif %}>{{ category.name }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -52,7 +52,7 @@
                 {% for item in items.items %}
                 <tr>
                     <td>{{ item.title }}</td>
-                    <td>{{ item.category }}</td>
+                    <td>{{ item.category.name if item.category else 'Без категории' }}</td>
                     <td>{{ item.price_per_hour }} ₽</td>
                     <td>
                         {% if item.status == 'Available' %}
@@ -65,10 +65,10 @@
                     </td>
                     <td>
                         {% if item.status == 'Available' %}
-                            <button type="button" class="btn btn-success"
-                                    onclick="openRentModal('{{ item.id }}', '{{ item.title }}', {{ item.price_per_hour }})">
-                                Арендовать
-                            </button>
+                            <form action="{{ url_for('main.check_rental_eligibility') }}" method="POST" style="display: inline;">
+                                <input type="hidden" name="item_id" value="{{ item.id }}">
+                                <button type="submit" class="btn btn-success">Арендовать</button>
+                            </form>
                         {% else %}
                             <button class="btn btn-disabled" disabled>Занято</button>
                         {% endif %}
@@ -102,64 +102,7 @@
     {% endif %}
 </section>
 
-<div id="rentModal" class="modal-backdrop" style="display:none;">
-    <div class="modal-card">
-        <button class="modal-close" onclick="closeModal()">&times;</button>
-        <h3>Оформление аренды</h3>
-        <p id="modalItemTitle">Предмет:</p>
-        <p>Цена: <strong><span id="modalItemPrice">0</span> ₽</strong> / час</p>
-
-        <form action="{{ url_for('main.rent_item_process') }}" method="POST" class="form-grid">
-            <input type="hidden" name="item_id" id="modalItemId">
-            <div class="field-group">
-                <label>Начало аренды</label>
-                <input type="datetime-local" name="rent_start" id="rent_start" class="input-field" required onchange="calculateTotal()">
-            </div>
-            <div class="field-group">
-                <label>Окончание аренды</label>
-                <input type="datetime-local" name="rent_end" id="rent_end" class="input-field" required onchange="calculateTotal()">
-            </div>
-            <div class="field-group">
-                <h4>Итого: <span id="totalPrice">0</span> ₽</h4>
-            </div>
-            <button type="submit" class="btn btn-success">Подтвердить аренду</button>
-        </form>
-    </div>
-</div>
-
 <script>
-let currentPricePerHour = 0;
-
-function openRentModal(id, title, price) {
-    document.getElementById('modalItemId').value = id;
-    document.getElementById('modalItemTitle').innerText = 'Предмет: ' + title;
-    document.getElementById('modalItemPrice').innerText = price;
-    currentPricePerHour = price;
-
-    const now = new Date().toISOString().slice(0, 16);
-    document.getElementById('rent_start').min = now;
-    document.getElementById('rent_end').min = now;
-
-    document.getElementById('rentModal').style.display = 'flex';
-}
-
-function closeModal() {
-    document.getElementById('rentModal').style.display = 'none';
-}
-
-function calculateTotal() {
-    const start = new Date(document.getElementById('rent_start').value);
-    const end = new Date(document.getElementById('rent_end').value);
-
-    if (start && end && end > start) {
-        const diffInMs = end - start;
-        const diffInHours = Math.ceil(diffInMs / (1000 * 60 * 60));
-        document.getElementById('totalPrice').innerText = diffInHours * currentPricePerHour;
-    } else {
-        document.getElementById('totalPrice').innerText = 0;
-    }
-}
-
 function toggleSearchPanel() {
     const panel = document.getElementById('searchPanel');
     const button = document.getElementById('searchToggleBtn');
