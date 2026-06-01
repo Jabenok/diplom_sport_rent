@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from app import db
-from app.models import User, Equipment
+from app.models import User, Equipment, Category
 
 
 def register(client, full_name, email, password):
@@ -48,7 +48,11 @@ def test_rent_item_requires_profile_data(client):
     user.set_password('password')
     db.session.add(user)
 
-    equipment = Equipment(title='Шлем', category='Безопасность', price_per_hour=50.0)
+    category = Category(name='Безопасность')
+    db.session.add(category)
+    db.session.commit()
+
+    equipment = Equipment(title='Шлем', category=category, price_per_hour=50.0)
     db.session.add(equipment)
     db.session.commit()
 
@@ -69,7 +73,11 @@ def test_rent_item_process_validates_dates(client):
     user.set_passport('1234567890')
     db.session.add(user)
 
-    equipment = Equipment(title='Ракетка', category='Теннис', price_per_hour=120.0)
+    category = Category(name='Теннис')
+    db.session.add(category)
+    db.session.commit()
+
+    equipment = Equipment(title='Ракетка', category=category, price_per_hour=120.0)
     db.session.add(equipment)
     db.session.commit()
 
@@ -99,10 +107,14 @@ def test_admin_equipment_crud(client):
     login_response = login(client, 'admin@example.com', 'password')
     assert login_response.status_code == 302
 
+    category = Category(name='Горные')
+    db.session.add(category)
+    db.session.commit()
+
     # Create equipment
     response = client.post(
         '/admin/equipment',
-        data={'title': 'Ботинки', 'category': 'Горные', 'price': '200', 'status': 'Available'},
+        data={'title': 'Ботинки', 'category_id': str(category.id), 'price': '200', 'status': 'Available'},
         follow_redirects=True,
     )
     assert 'Добавлено: Ботинки' in response.get_data(as_text=True)
@@ -117,7 +129,7 @@ def test_admin_equipment_crud(client):
         data={
             'item_id': equipment.id,
             'title': 'Ботинки PRO',
-            'category': 'Горные',
+            'category_id': str(category.id),
             'price': '250',
             'status': 'Available',
         },

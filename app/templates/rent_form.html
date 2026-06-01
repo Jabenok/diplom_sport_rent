@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="profile-grid">
+    <section class="list-panel">
+        <h3>Оформление аренды</h3>
+        <div style="background: #e7f3ff; border: 1px solid #b3d9ff; border-radius: 4px; padding: 15px; margin-bottom: 20px;">
+            <h4>{{ item.title }}</h4>
+            <p>Категория: <strong>{{ item.category.name if item.category else 'Без категории' }}</strong></p>
+            <p>Цена за час: <strong>{{ item.price_per_hour }} ₽</strong></p>
+        </div>
+
+        <form action="{{ url_for('main.rent_item_process') }}" method="POST" class="form-grid">
+            <input type="hidden" name="item_id" value="{{ item.id }}">
+            
+            <div class="field-group">
+                <label>Начало аренды</label>
+                <input type="datetime-local" name="rent_start" id="rent_start" class="input-field" required onchange="calculateTotal()">
+            </div>
+            
+            <div class="field-group">
+                <label>Окончание аренды</label>
+                <input type="datetime-local" name="rent_end" id="rent_end" class="input-field" required onchange="calculateTotal()">
+            </div>
+            
+            <div class="field-group">
+                <h4>Итоговая стоимость: <span id="totalPrice" style="color: #28a745;">0</span> ₽</h4>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <a href="{{ url_for('main.index') }}" class="btn btn-secondary">Отмена</a>
+                <button type="submit" class="btn btn-success">Подтвердить аренду</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+<script>
+const pricePerHour = {{ item.price_per_hour }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const now = new Date().toISOString().slice(0, 16);
+    document.getElementById('rent_start').min = now;
+    document.getElementById('rent_end').min = now;
+    document.getElementById('rent_start').value = now;
+    document.getElementById('rent_end').value = now;
+    calculateTotal();
+});
+
+function calculateTotal() {
+    const start = new Date(document.getElementById('rent_start').value);
+    const end = new Date(document.getElementById('rent_end').value);
+
+    if (start && end && end > start) {
+        const diffInMs = end - start;
+        const diffInHours = Math.ceil(diffInMs / (1000 * 60 * 60));
+        document.getElementById('totalPrice').innerText = (diffInHours * pricePerHour).toFixed(0);
+    } else {
+        document.getElementById('totalPrice').innerText = '0';
+    }
+}
+</script>
+{% endblock %}

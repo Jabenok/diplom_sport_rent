@@ -29,7 +29,7 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert {% if category == 'success' %}alert-success{% else %}alert-error{% endif %}">
+                    <div class="alert {% if category == 'success' %}alert-success{% else %}alert-error{% endif %}" data-alert>
                         {{ message }}
                     </div>
                 {% endfor %}
@@ -37,6 +37,21 @@
         {% endwith %}
         {% block content %}{% endblock %}
     </main>
+    <script>
+        // Auto-dismiss flash messages after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('[data-alert]');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.style.transition = 'opacity 0.5s ease-out';
+                    alert.style.opacity = '0';
+                    setTimeout(() => {
+                        alert.remove();
+                    }, 500);
+                }, 5000);
+            });
+        });
+    </script>
     <footer class="page-container footer">© СПОРТ-ПРОКАТ — удобный сервис для аренды спортивного инвентаря.</footer>
 </body>
 </html>
