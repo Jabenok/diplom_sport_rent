@@ -64,9 +64,9 @@ def test_rent_item_process_validates_dates(client):
         full_name='Арендатор',
         email='order@example.com',
         phone='1234567890',
-        passport_data='1234567890',
     )
     user.set_password('password')
+    user.set_passport('1234567890')
     db.session.add(user)
 
     equipment = Equipment(title='Ракетка', category='Теннис', price_per_hour=120.0)

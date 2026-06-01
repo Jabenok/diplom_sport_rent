@@ -125,7 +125,8 @@ def register_routes(app):
         if full_name:
             current_user.full_name = full_name
         current_user.phone = phone
-        current_user.passport_data = passport
+        if passport:
+            current_user.set_passport(passport)
 
         try:
             db.session.commit()
@@ -176,7 +177,7 @@ def register_routes(app):
     @main.route('/rent/<int:item_id>', endpoint='rent_item')
     @login_required
     def rent_item(item_id):
-        if not current_user.phone or not current_user.passport_data:
+        if not current_user.phone or not current_user.passport_hash:
             flash('Для аренды необходимо заполнить телефон и паспортные данные в профиле!', 'danger')
             return redirect(url_for('main.profile'))
 
@@ -209,7 +210,7 @@ def register_routes(app):
     @main.route('/rent/process', methods=['POST'], endpoint='rent_item_process')
     @login_required
     def rent_item_process():
-        if not current_user.phone or not current_user.passport_data:
+        if not current_user.phone or not current_user.passport_hash:
             flash('Заполните данные в профиле для аренды!', 'danger')
             return redirect(url_for('main.profile'))
 

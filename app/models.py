@@ -11,7 +11,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     phone = db.Column(db.String(20))
-    passport_data = db.Column(db.String(10))
+    passport_hash = db.Column(db.String(255))
     is_admin = db.Column(db.Boolean, default=False)
 
     def set_password(self, password):
@@ -19,6 +19,19 @@ class User(UserMixin, db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def set_passport(self, passport_data):
+        """Hash and store passport data"""
+        if passport_data:
+            self.passport_hash = generate_password_hash(passport_data)
+        else:
+            self.passport_hash = None
+
+    def check_passport(self, passport_data):
+        """Verify passport data against stored hash"""
+        if not self.passport_hash:
+            return False
+        return check_password_hash(self.passport_hash, passport_data)
 
 
 class Equipment(db.Model):
