@@ -9,7 +9,7 @@
             <p>Цена за час: <strong>{{ item.price_per_hour }} ₽</strong></p>
         </div>
 
-        <form action="{{ url_for('main.rent_item_process') }}" method="POST" class="form-grid">
+        <form id="rentForm" action="{{ url_for('main.rent_item_process') }}" method="POST" class="form-grid">
             <input type="hidden" name="item_id" value="{{ item.id }}">
             
             <div class="field-group">
@@ -28,21 +28,109 @@
             
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
                 <a href="{{ url_for('main.index') }}" class="btn btn-secondary">Отмена</a>
-                <button type="submit" class="btn btn-success">Подтвердить аренду</button>
+                <button type="button" class="btn btn-success" onclick="openRentConfirmModal()">Подтвердить аренду</button>
             </div>
         </form>
     </section>
 </div>
 
+<div id="rentConfirmModal" class="modal-backdrop" style="display:none;">
+    <div class="modal-card">
+        <button class="modal-close" onclick="closeRentConfirmModal()">×</button>
+        <h3>Подтверждение аренды</h3>
+        <p>Вы арендуете: <strong>{{ item.title }}</strong></p>
+        <p>Начало: <span id="confirmStart"></span></p>
+        <p>Окончание: <span id="confirmEnd"></span></p>
+        <p>Итоговая стоимость: <strong id="confirmTotal">0</strong> ₽</p>
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+            <button type="button" class="btn btn-secondary" onclick="closeRentConfirmModal()">Отмена</button>
+            <button id="confirmRentBtn" type="button" class="btn btn-success">Подтвердить</button>
+        </div>
+    </div>
+</div>
+
 <script>
 const pricePerHour = {{ item.price_per_hour }};
+let rentForm = null;
+let confirmRentBtn = null;
+const confirmStart = document.getElementById('confirmStart');
+const confirmEnd = document.getElementById('confirmEnd');
+const confirmTotal = document.getElementById('confirmTotal');
+
+function openRentConfirmModal() {
+    const startInput = document.getElementById('rent_start');
+    const endInput = document.getElementById('rent_end');
+    const startValue = startInput.value;
+    const endValue = endInput.value;
+
+    if (!startValue || !endValue) {
+        alert('Пожалуйста, укажите дату начала и окончания аренды.');
+        return;
+    }
+
+    const startDate = new Date(startValue);
+    const endDate = new Date(endValue);
+    if (endDate <= startDate) {
+        alert('Дата окончания должна быть больше даты начала!');
+        return;
+    }
+
+    const diffInMs = endDate - startDate;
+    const hours = Math.max(1, Math.ceil(diffInMs / (1000 * 60 * 60)));
+    const total = hours * pricePerHour;
+
+    confirmStart.textContent = startDate.toLocaleString('ru-RU', {
+        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+    });
+    confirmEnd.textContent = endDate.toLocaleString('ru-RU', {
+        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+    });
+    confirmTotal.textContent = total.toFixed(0);
+
+    document.getElementById('rentConfirmModal').style.display = 'flex';
+}
+
+function closeRentConfirmModal() {
+    document.getElementById('rentConfirmModal').style.display = 'none';
+}
+
+window.openRentConfirmModal = openRentConfirmModal;
+window.closeRentConfirmModal = closeRentConfirmModal;
 
 document.addEventListener('DOMContentLoaded', function() {
-    const now = new Date().toISOString().slice(0, 16);
-    document.getElementById('rent_start').min = now;
-    document.getElementById('rent_end').min = now;
-    document.getElementById('rent_start').value = now;
-    document.getElementById('rent_end').value = now;
+    rentForm = document.getElementById('rentForm');
+    confirmRentBtn = document.getElementById('confirmRentBtn');
+
+    if (confirmRentBtn) {
+        confirmRentBtn.addEventListener('click', function() {
+            if (rentForm) {
+                rentForm.submit();
+            }
+        });
+    }
+
+    const now = new Date();
+    const startValue = now.toISOString().slice(0, 16);
+    const endValue = new Date(now.getTime() + 60 * 60 * 1000).toISOString().slice(0, 16);
+    const rentStart = document.getElementById('rent_start');
+    const rentEnd = document.getElementById('rent_end');
+
+    rentStart.min = startValue;
+    rentEnd.min = startValue;
+    rentStart.value = startValue;
+    rentEnd.value = endValue;
+
+    rentStart.addEventListener('change', function() {
+        const startDate = new Date(rentStart.value);
+        const endDate = new Date(rentEnd.value);
+        if (endDate <= startDate) {
+            const nextHour = new Date(startDate.getTime() + 60 * 60 * 1000);
+            rentEnd.value = nextHour.toISOString().slice(0, 16);
+        }
+        rentEnd.min = rentStart.value;
+        calculateTotal();
+    });
+
     calculateTotal();
 });
 

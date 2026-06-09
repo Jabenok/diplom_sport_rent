@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from flask_login import login_user, logout_user, login_required, current_user
 from datetime import datetime
 import math
+from sqlalchemy import or_
 
 from .models import User, Equipment, Rental, Category
 from . import db
@@ -174,6 +175,16 @@ def register_routes(app):
                     item.category = selected_category
                     item.price_per_hour = float(price)
                     item.status = status
+
+                    if status == 'Available':
+                        active_rentals = Rental.query.filter(
+                            Rental.equipment_id == item.id,
+                            or_(Rental.is_returned == False, Rental.is_returned.is_(None)),
+                        ).all()
+                        for rental in active_rentals:
+                            rental.is_returned = True
+                            rental.rent_end = datetime.now()
+
                     flash(f'Обновлено: {title}', 'success')
             else:
                 new_item = Equipment(
@@ -451,6 +462,15 @@ def register_routes(app):
     @admin_required
     def delete_equipment(item_id):
         item = Equipment.query.get_or_404(item_id)
+        active_rentals = Rental.query.filter(
+            Rental.equipment_id == item.id,
+            or_(Rental.is_returned == False, Rental.is_returned.is_(None)),
+        ).count()
+        if active_rentals:
+            flash('Нельзя удалить предмет, к которому привязаны активные аренды.', 'danger')
+            return redirect(url_for('main.admin_equipment'))
+
+        Rental.query.filter_by(equipment_id=item.id).delete()
         db.session.delete(item)
         db.session.commit()
         flash(f'Удалено: {item.title}', 'danger')
