@@ -425,11 +425,13 @@ textarea {
 
   .table-wrapper {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .inventory-table,
   .default-table {
-    min-width: 100%;
+    min-width: 720px;
+    width: auto;
   }
 }
 
@@ -501,9 +503,13 @@ textarea {
     margin-bottom: 16px;
   }
 
+  .inventory-table td,
+  .inventory-table th,
   .default-table td,
   .default-table th {
+    white-space: normal;
     word-break: break-word;
+    word-wrap: break-word;
   }
 
   .default-table td > form,

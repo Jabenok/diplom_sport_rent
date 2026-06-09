@@ -61,8 +61,8 @@
                             <td><strong>{{ total }} ₽</strong></td>
                             <td style="display: flex; gap: 5px;">
                                 <button type="button" class="btn btn-secondary" onclick="openExtendModal({{ rental.id }}, '{{ rental.rent_end.strftime('%Y-%m-%dT%H:%M') if rental.rent_end else now.strftime('%Y-%m-%dT%H:%M') }}')">Продлить</button>
-                                <form action="{{ url_for('main.process_return', rental_id=rental.id) }}" method="POST" style="margin: 0;">
-                                    <button type="submit" class="btn btn-danger">Вернуть</button>
+                                <form id="returnForm-{{ rental.id }}" action="{{ url_for('main.process_return', rental_id=rental.id) }}" method="POST" style="margin: 0;">
+                                    <button type="button" class="btn btn-danger" onclick="openPayModal({{ rental.id }}, '{{ rental.rent_start.strftime('%Y-%m-%dT%H:%M') }}', {{ rental.equipment.price_per_hour }})">Вернуть</button>
                                 </form>
                             </td>
                         </tr>
@@ -79,10 +79,10 @@
 
 <div id="payModal" class="modal-backdrop" style="display:none;">
     <div class="modal-card">
-        <button class="modal-close" onclick="this.closest('.modal-backdrop').style.display='none'">×</button>
+        <button class="modal-close" onclick="closePayModal()">×</button>
         <h3>Оплата</h3>
         <p id="payText">Сумма к оплате: 0 ₽</p>
-        <button class="btn btn-success" onclick="this.closest('.modal-backdrop').style.display='none'">Оплатить</button>
+        <button id="confirmPaymentBtn" type="button" class="btn btn-success">Оплатить</button>
     </div>
 </div>
 
@@ -104,22 +104,41 @@
 </div>
 
 <script>
-window.onload = function() {
-    const urlParams = new URLSearchParams(window.location.search);
+let currentReturnForm = null;
 
-    if (urlParams.has('show_payment')) {
-        const amount = urlParams.get('amount');
-        const payTextElement = document.getElementById('payText');
-        if (payTextElement) {
-            payTextElement.innerText = 'Сумма к оплате: ' + (amount && amount !== 'null' ? amount : '0') + ' ₽';
-        }
-        const modal = document.getElementById('payModal');
-        if (modal) {
-            modal.style.display = 'flex';
-        }
-        window.history.replaceState({}, document.title, window.location.pathname);
+function openPayModal(rentalId, rentStartDate, pricePerHour) {
+    const payTextElement = document.getElementById('payText');
+    const modal = document.getElementById('payModal');
+    const confirmButton = document.getElementById('confirmPaymentBtn');
+
+    const rentStart = new Date(rentStartDate);
+    const now = new Date();
+    const diffMs = now - rentStart;
+    const hours = Math.max(1, Math.ceil(diffMs / 3600000));
+    const totalAmount = hours * pricePerHour;
+
+    if (payTextElement) {
+        payTextElement.innerText = `Сумма к оплате: ${totalAmount} ₽`;
     }
-};
+
+    currentReturnForm = document.getElementById(`returnForm-${rentalId}`);
+    if (confirmButton && currentReturnForm) {
+        confirmButton.onclick = function() {
+            currentReturnForm.submit();
+        };
+    }
+
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+}
+
+function closePayModal() {
+    const modal = document.getElementById('payModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
 
 function openExtendModal(rentalId, currentEndDate) {
     const modal = document.getElementById('extendModal');

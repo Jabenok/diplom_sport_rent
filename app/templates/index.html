@@ -65,10 +65,7 @@
                     </td>
                     <td>
                         {% if item.status == 'Available' %}
-                            <form action="{{ url_for('main.check_rental_eligibility') }}" method="POST" style="display: inline;">
-                                <input type="hidden" name="item_id" value="{{ item.id }}">
-                                <button type="submit" class="btn btn-success">Арендовать</button>
-                            </form>
+                            <button type="button" class="btn btn-success" onclick="openRentModal({{ item.id }}, '{{ item.title|replace("'", "\\'") }}', {{ item.price_per_hour }})">Арендовать</button>
                         {% else %}
                             <button class="btn btn-disabled" disabled>Занято</button>
                         {% endif %}
@@ -102,12 +99,83 @@
     {% endif %}
 </section>
 
+<div id="rentModal" class="modal-backdrop" style="display:none;">
+    <div class="modal-card">
+        <button class="modal-close" onclick="closeRentModal()">×</button>
+        <h3>Оформление аренды</h3>
+        <p id="rentModalItemTitle"></p>
+        <form id="rentModalForm" action="{{ url_for('main.rent_item_process') }}" method="POST">
+            <input type="hidden" name="item_id" id="rentModalItemId" value="">
+            <div class="field-group">
+                <label>Начало аренды</label>
+                <input type="datetime-local" name="rent_start" id="rentModalStart" class="input-field" required onchange="calculateRentModalTotal()">
+            </div>
+            <div class="field-group">
+                <label>Окончание аренды</label>
+                <input type="datetime-local" name="rent_end" id="rentModalEnd" class="input-field" required onchange="calculateRentModalTotal()">
+            </div>
+            <div class="field-group">
+                <h4>Итоговая стоимость: <span id="rentModalTotal" style="color: #28a745;">0</span> ₽</h4>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn btn-secondary" onclick="closeRentModal()">Отмена</button>
+                <button type="button" id="rentModalSubmit" class="btn btn-success">Подтвердить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function toggleSearchPanel() {
     const panel = document.getElementById('searchPanel');
     const button = document.getElementById('searchToggleBtn');
     panel.classList.toggle('hidden');
     button.textContent = panel.classList.contains('hidden') ? 'Поиск' : 'Скрыть';
+}
+
+function openRentModal(itemId, itemTitle, pricePerHour) {
+    const rentModal = document.getElementById('rentModal');
+    const itemTitleField = document.getElementById('rentModalItemTitle');
+    const itemIdField = document.getElementById('rentModalItemId');
+    const startField = document.getElementById('rentModalStart');
+    const endField = document.getElementById('rentModalEnd');
+    const now = new Date();
+    const startValue = now.toISOString().slice(0, 16);
+    const endValue = new Date(now.getTime() + 60 * 60 * 1000).toISOString().slice(0, 16);
+
+    itemTitleField.textContent = `Предмет: ${itemTitle}`;
+    itemIdField.value = itemId;
+    startField.min = startValue;
+    endField.min = startValue;
+    startField.value = startValue;
+    endField.value = endValue;
+    calculateRentModalTotal(pricePerHour);
+
+    rentModal.style.display = 'flex';
+    window.currentRentPricePerHour = pricePerHour;
+}
+
+function closeRentModal() {
+    const rentModal = document.getElementById('rentModal');
+    rentModal.style.display = 'none';
+}
+
+function calculateRentModalTotal(pricePerHour) {
+    const startField = document.getElementById('rentModalStart');
+    const endField = document.getElementById('rentModalEnd');
+    const totalField = document.getElementById('rentModalTotal');
+    const start = new Date(startField.value);
+    const end = new Date(endField.value);
+
+    if (end <= start) {
+        totalField.innerText = '0';
+        return;
+    }
+
+    const diffInMs = end - start;
+    const diffInHours = Math.ceil(diffInMs / (1000 * 60 * 60));
+    const total = Math.max(1, diffInHours) * (pricePerHour || window.currentRentPricePerHour || 0);
+    totalField.innerText = total.toFixed(0);
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -118,6 +186,27 @@ window.addEventListener('DOMContentLoaded', () => {
     if (title || category || status) {
         panel.classList.remove('hidden');
         document.getElementById('searchToggleBtn').textContent = 'Скрыть';
+    }
+
+    const rentModalSubmit = document.getElementById('rentModalSubmit');
+    if (rentModalSubmit) {
+        rentModalSubmit.addEventListener('click', () => {
+            document.getElementById('rentModalForm').submit();
+        });
+    }
+
+    const rentStart = document.getElementById('rentModalStart');
+    const rentEnd = document.getElementById('rentModalEnd');
+    if (rentStart && rentEnd) {
+        rentStart.addEventListener('change', () => {
+            if (new Date(rentEnd.value) <= new Date(rentStart.value)) {
+                const nextHour = new Date(new Date(rentStart.value).getTime() + 60 * 60 * 1000);
+                rentEnd.value = nextHour.toISOString().slice(0, 16);
+            }
+            rentEnd.min = rentStart.value;
+            calculateRentModalTotal();
+        });
+        rentEnd.addEventListener('change', () => calculateRentModalTotal());
     }
 });
 </script>
